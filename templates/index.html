@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% for job in jobs %}
+<h2>Работа #{{job.id}}</h2>
+<table>
+    <tr class="table-secondary">
+        <td class="table-secondary" width="400px">
+            <div>Наименование работы</div>
+        </td>
+        <td class="table-secondary" width="200px">
+            <div>Лидер</div>
+        </td>
+        <td class="table-secondary" width="200px">
+            <div>Длительность</div>
+        </td>
+        <td class="table-secondary" width="100px">
+            <div>Участники</div>
+        </td>
+        <td class="table-secondary" width="100px">
+            <div>Законенность</div>
+        </td>
+    </tr>
+    <tr class="table-info">
+        <td class="table-info" width="400px">
+            <div>{{job.job}}</div>
+        </td>
+        <td class="table-info" width="200px">
+            <div>{{names[job.team_leader][0]}} {{names[job.team_leader][1]}}</div>
+        </td>
+        <td class="table-info" width="200px">
+            <div>{{job.work_size}}</div>
+        </td>
+        <td class="table-info" width="100px">
+            <div>{{job.collaborators}}</div>
+        </td>
+        <td class="table-info" width="100px">
+            {%if not job.is_finished%}
+            <div class="table-danger">Не закончено!</div>
+            {%else%}
+            <div class="table-success">Закончено!</div>
+            {%endif%}
+        </td>
+    </tr>
+</table>
+
+{% endfor %}
+{% endblock %}
