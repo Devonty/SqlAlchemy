@@ -3,6 +3,7 @@ import sqlalchemy
 from sqlalchemy import orm
 from .db_session import SqlAlchemyBase
 from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(SqlAlchemyBase, UserMixin):
     __tablename__ = 'users'
@@ -21,7 +22,12 @@ class User(SqlAlchemyBase, UserMixin):
 
     jobs = orm.relation('Jobs', back_populates='leader')
 
-
     def __str__(self):
         return f'''{self.surname} {self.name} {self.age} {self.position} {self.speciality}\n
 {self.address} {self.email} {self.hashed_password}'''
+
+    def set_password(self, password):
+        self.hashed_password = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.hashed_password, password)
