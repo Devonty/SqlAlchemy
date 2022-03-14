@@ -1,12 +1,25 @@
-from flask import Flask, render_template, redirect, make_response
-from data import db_session
+'''make_samlple_db - на создание капитана, 3-участнков и работы'''
+
+from flask import Flask, render_template, redirect, make_response, jsonify
+from data import db_session, jobs_api
 from data.users import User
 from data.jobs import Jobs
-from forms.user import RegisterForm
+from forms.user import RegisterForm, LoginForm
+from forms.job import AddJob
+from flask_login import LoginManager, login_user, logout_user, login_required
 import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    db_sess = db_session.create_session()
+    return db_sess.query(User).get(user_id)
 
 
 @app.route('/')
@@ -48,10 +61,70 @@ def reqister():
     return render_template('register.html', title='Регистрация', form=form)
 
 
-def main():
-    db_session.global_init("db/blogs.db")
-    db_sess = db_session.create_session()
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        user = db_sess.query(User).filter(User.email == form.email.data).first()
+        if user and user.check_password(form.password.data):
+            login_user(user, remember=form.remember_me.data)
+            return redirect("/index")
+        return render_template('login.html',
+                               message="Неправильный логин или пароль",
+                               form=form)
+    return render_template('login.html', title='Авторизация', form=form)
 
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect("/")
+
+
+@app.route('/add_job', methods=['GET', 'POST'])
+def add_job():
+    form = AddJob()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+
+        # Проверка на существование лидера
+        leader = db_sess.query(User).filter(User.id == form.team_leader.data).first()
+        if not leader:
+            return render_template('add_job.html',
+                                   message="Обозначен несуществующий лидер.",
+                                   form=form)
+
+        # Проверка на существование участников
+        members_id = list(map(int, form.collaborators.data.split(',')))
+        members = db_sess.query(User).filter(User.id.in_(members_id)).all()
+        if len(members) != len(members_id):
+            return render_template('add_job.html',
+                                   message="Обозначены несуществующие участники.",
+                                   form=form)
+        # Все хорошо
+        job = Jobs(
+            team_leader=form.team_leader.data,
+            job=form.job.data,
+            work_size=form.work_size.data,
+            collaborators=form.collaborators.data,
+            end_date=form.end_date.data,
+            is_finished=form.is_finished.data
+        )
+
+        db_sess.add(job)
+        db_sess.commit()
+        return redirect('/')
+    return render_template('add_job.html', form=form)
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+
+def make_samlple_db(db_sess):
     # очистка
     db_sess.query(User).delete()
     db_sess.query(Jobs).delete()
@@ -92,6 +165,11 @@ def main():
     db_sess.add(job)
     db_sess.commit()
 
+
+def main():
+    db_session.global_init("db/with_jobs.db")
+    db_sess = db_session.create_session()
+    app.register_blueprint(jobs_api.blueprint)
     app.run()
 
 
