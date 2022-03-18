@@ -1,16 +1,31 @@
 '''make_samlple_db - на создание капитана, 3-участнков и работы'''
-
-from flask import Flask, render_template, redirect, make_response, jsonify
+from flask_restful import reqparse, abort, Api, Resource, reqparse
+from flask import Flask, render_template, redirect, make_response, jsonify, request, abort
 from data import db_session, jobs_api
+from data.jobs_resource import JobsListResource, JobsResource
+from data.users_resource import UsersResource, UsersListResource
 from data.users import User
 from data.jobs import Jobs
 from forms.user import RegisterForm, LoginForm
 from forms.job import AddJob
-from flask_login import LoginManager, login_user, logout_user, login_required
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'yandexlyceum_secret_key'
+api = Api(app)
+
+# для списка объектов
+api.add_resource(JobsListResource, '/api/v2/jobs')
+
+# для одного объекта
+api.add_resource(JobsResource, '/api/v2/jobs/<int:job_id>')
+
+# для списка объектов
+api.add_resource(UsersListResource, '/api/v2/users')
+
+# для одного объекта
+api.add_resource(UsersResource, '/api/v2/users/<int:user_id>')
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -112,11 +127,44 @@ def add_job():
             end_date=form.end_date.data,
             is_finished=form.is_finished.data
         )
-
         db_sess.add(job)
         db_sess.commit()
         return redirect('/')
     return render_template('add_job.html', form=form)
+
+
+@app.route('/jobs/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_job(id):
+    form = AddJob()
+    if request.method == "GET":
+        db_sess = db_session.create_session()
+        jobs = db_sess.query(Jobs).filter(Jobs.id == id,
+                                          Jobs.team_leader == current_user.id
+                                          ).first()
+        if jobs:
+            form.title.data = jobs.title
+            form.content.data = jobs.content
+            form.is_private.data = jobs.is_private
+        else:
+            abort(404)
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        news = db_sess.query(jobs).filter(jobs.id == id,
+                                          jobs.user == current_user
+                                          ).first()
+        if news:
+            news.title = form.title.data
+            news.content = form.content.data
+            news.is_private = form.is_private.data
+            db_sess.commit()
+            return redirect('/')
+        else:
+            abort(404)
+    return render_template('news.html',
+                           title='Редактирование новости',
+                           form=form
+                           )
 
 
 @app.errorhandler(404)

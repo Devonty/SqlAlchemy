@@ -2,29 +2,49 @@ import requests
 import datetime
 import json
 
-url = 'http://localhost:5000/api/'
-GET = False
+url = 'http://localhost:5000/api/v2/'
+user_id = -1
+email = 'email@email'
+
 POST = True
-DELETE = False
-# GET
-if GET:
-    get_all_ = requests.get(url + "jobs")
-    print(*get_all_)
-    get_one_ = requests.get(url + "jobs/1")
-    print(*get_one_)
-    get_error_id_ = requests.get(url + "jobs/-1")
-    print(*get_error_id_)
-    get_error_string_ = requests.get(url + "jobs/string")
-    print(*get_error_string_)
+GET = True
+DELETE = True
+
 # POST
 if POST:
-    params = json.dumps({
-        'team_leader': 1,
-        'job': "job",
-        'work_size': 5,
-        'collaborators': "2,3",
-        'is_finished': False,
-    })
-    post_correct = requests.post(url + "jobs", json=params)
-    print(post_correct.url)
-    print(*post_correct)
+    params = {
+        'surname': 'surname',
+        'name': "name",
+        'age': 5,
+        'position': "position",
+        'speciality': 'speciality',
+        'address': 'address',
+        'email': email,
+        'hashed_password': 'hashed_password',
+    }
+    print('Параметры:', params)
+    post_correct = requests.post(url + "users", params=params)
+    print('Ссылка: ', post_correct.url)
+    print('Ответ: ', post_correct.json())
+
+# GET
+if GET:
+    # Инфа обо всех
+    get_all_ = requests.get(url + "users").json()
+    print('Люди:', get_all_)
+
+    # Ищу id добавленного в POST
+    for user in get_all_['users']:
+        if user['email'] == email:
+            user_id = user['id']
+    # ----------------
+
+    # Информация о добавленном пользователе
+    get_one_ = requests.get(url + f"users/{user_id}").json()
+    print('Наш чел:', get_one_)
+
+# DELETE
+if DELETE:
+    # удаляю пользователя
+    get_one_ = requests.delete(url + f"users/{user_id}").json()
+    print("Удаление:", get_one_)
